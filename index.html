@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON UPI GENERATOR</title>
+    <!-- External Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #0a0b10;
+        }
+
+        body {
+            font-family: 'Orbitron', 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0b10 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1), inset 0 0 15px rgba(0, 243, 255, 0.05);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        h2 {
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--neon-purple);
+            border-radius: 4px;
+            color: var(--neon-blue);
+            outline: none;
+            box-sizing: border-box;
+            transition: 0.3s;
+            font-family: monospace;
+        }
+
+        input:focus {
+            box-shadow: 0 0 15px var(--neon-purple);
+            border-color: #fff;
+        }
+
+        .btn-group { margin-top: 20px; }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 15px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            background: transparent;
+            color: var(--neon-blue);
+            transition: 0.4s;
+        }
+
+        button:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-blue);
+        }
+
+        .dl-btn { 
+            border-color: var(--neon-purple);
+            color: var(--neon-purple);
+            display: none;
+        }
+
+        .dl-btn:hover {
+            background: var(--neon-purple);
+            color: #fff;
+            box-shadow: 0 0 30px var(--neon-purple);
+        }
+
+        #qrcode {
+            margin: 25px auto;
+            padding: 15px;
+            background: #fff;
+            border-radius: 8px;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        #qrcode canvas, #qrcode img {
+            max-width: 100%;
+        }
+
+        /* Scanning Animation Line */
+        #qrcode::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+            display: none;
+        }
+
+        .active-scan #qrcode::after {
+            display: block;
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainContainer">
+    <h2>System Terminal: UPI</h2>
+    <input type="text" id="upiId" placeholder="> ACCESS_ID (user@bank)">
+    <input type="text" id="payeeName" placeholder="> SUBJECT_NAME">
+    <input type="number" id="amount" placeholder="> CREDIT_AMOUNT">
+    
+    <div class="btn-group">
+        <button onclick="generateQR()">Initialize Protocol</button>
+        <button id="downloadBtn" class="dl-btn" onclick="downloadQR()">Export Data.png</button>
+    </div>
+
+    <div id="qrcode"></div>
+</div>
+
+<script>
+    function generateQR() {
+        const upiId = document.getElementById('upiId').value;
+        const name = document.getElementById('payeeName').value;
+        const amount = document.getElementById('amount').value;
+        const qrContainer = document.getElementById('qrcode');
+        const dlBtn = document.getElementById('downloadBtn');
+        const mainCont = document.getElementById('mainContainer');
+
+        if (!upiId) {
+            alert("ERROR: UPI_ID_REQUIRED");
+            return;
+        }
+
+        // Reset state
+        qrContainer.innerHTML = "";
+        dlBtn.style.display = "none";
+        mainCont.classList.remove('active-scan');
+        
+        // Force a brief reflow to restart animation
+        void mainCont.offsetWidth;
+        mainCont.classList.add('active-scan');
+        
+        // Build UPI String
+        let upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(name)}&cu=INR`;
+        if (amount) upiLink += `&am=${encodeURIComponent(amount)}`;
+
+        // Generate QR Code
+        new QRCode(qrContainer, {
+            text: upiLink,
+            width: 200,
+            height: 200,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        // Delay showing download button until rendering is likely finished
+        setTimeout(() => {
+            dlBtn.style.display = "block";
+        }, 300);
+    }
+
+    function downloadQR() {
+        const container = document.getElementById('qrcode');
+        const canvas = container.querySelector('canvas');
+        const img = container.querySelector('img');
+        
+        // Get the source from canvas or image tag
+        let imageSource = "";
+        if (canvas) {
+            imageSource = canvas.toDataURL("image/png");
+        } else if (img && img.src) {
+            imageSource = img.src;
+        }
+
+        if (!imageSource || imageSource.includes("data:,")) {
+            alert("ERROR: PROTOCOL_NOT_READY - TRY AGAIN");
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = imageSource;
+        link.download = 'UPI_SECURE_TOKEN.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
